@@ -12,6 +12,7 @@ import {
   getGoogleOAuthUrl, 
   handleGoogleOAuthCallback, 
   getSessionFromRequest, 
+  getSessionFromRequestAsync,
   clearSessionFromRequest, 
   createSessionToken 
 } from './server/auth';
@@ -27,8 +28,8 @@ async function startServer() {
   // --- AUTHENTICATION ROUTES ---
 
   // Check current session
-  app.get('/api/auth/me', (req, res) => {
-    const session = getSessionFromRequest(req);
+  app.get('/api/auth/me', async (req, res) => {
+    const session = await getSessionFromRequestAsync(req);
     if (session) {
       return res.json({ authenticated: true, user: session });
     }

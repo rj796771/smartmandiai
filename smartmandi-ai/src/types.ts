@@ -106,7 +106,7 @@ export interface UserProfile {
   picture?: string;
   givenName?: string;
   familyName?: string;
-  provider: 'google';
+  provider: 'google' | 'supabase' | 'email' | 'demo' | string;
   loginAt: string;
 }
 

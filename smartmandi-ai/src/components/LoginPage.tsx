@@ -6,12 +6,14 @@ import {
   ShieldCheck, 
   Sparkles, 
   CheckCircle2, 
-  ArrowRight, 
   AlertCircle,
-  TrendingUp,
-  Scale,
-  Users,
-  Lock
+  Lock,
+  ExternalLink,
+  Copy,
+  Check,
+  Mail,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 
 interface LoginPageProps {
@@ -20,12 +22,29 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ language, onSuccessNavigate }) => {
-  const { loginWithGoogle, isLoading, authError, clearError } = useAuth();
+  const { 
+    loginWithGoogle, 
+    loginWithEmail, 
+    loginWithDemo, 
+    isLoading, 
+    authError, 
+    providerNotConfigured, 
+    callbackUrl,
+    supabaseProjectUrl,
+    clearError 
+  } = useAuth();
+  
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
     clearError();
+    setEmailStatusMessage(null);
     try {
       await loginWithGoogle();
       if (onSuccessNavigate) {
@@ -36,6 +55,41 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, onSuccessNavigat
     } finally {
       setIsSigningIn(false);
     }
+  };
+
+  const handleDemoSignIn = async () => {
+    setIsSigningIn(true);
+    clearError();
+    try {
+      await loginWithDemo();
+      if (onSuccessNavigate) {
+        onSuccessNavigate();
+      }
+    } catch (err) {
+      console.error('Demo sign in error:', err);
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setIsSigningIn(true);
+    clearError();
+    setEmailStatusMessage(null);
+
+    const res = await loginWithEmail(email, password || undefined);
+    if (res.message) {
+      setEmailStatusMessage(res.message);
+    }
+    setIsSigningIn(false);
+  };
+
+  const copyCallbackUrl = () => {
+    navigator.clipboard.writeText(callbackUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -113,18 +167,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, onSuccessNavigat
 
         {/* Right Side: Google Sign-In Card */}
         <div className="md:col-span-5">
-          <div className="bg-[#FFFDF8] dark:bg-[#1E2D25] rounded-[2.5rem] border border-[#DDD9CF] dark:border-[#28513A]/80 p-6 sm:p-8 card-shadow space-y-6 relative overflow-hidden">
+          <div className="bg-[#FFFDF8] dark:bg-[#1E2D25] rounded-[2.5rem] border border-[#DDD9CF] dark:border-[#28513A]/80 p-6 sm:p-8 card-shadow space-y-5 relative overflow-hidden">
             
             {/* Top Security Banner */}
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#F8F5ED] dark:bg-[#101814] border border-[#DDD9CF] dark:border-[#28513A] flex items-center justify-center text-[#183A2B] dark:text-[#D99A2B]">
-                <Lock className="w-7 h-7 text-[#D99A2B]" />
+            <div className="text-center space-y-1.5">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-[#F8F5ED] dark:bg-[#101814] border border-[#DDD9CF] dark:border-[#28513A] flex items-center justify-center text-[#183A2B] dark:text-[#D99A2B]">
+                <Lock className="w-6 h-6 text-[#D99A2B]" />
               </div>
               <h3 className="text-xl font-extrabold text-[#183A2B] dark:text-[#F5F2E9] font-['Manrope',sans-serif]">
                 {language === 'mr' ? 'खात्यामध्ये लॉग इन करा' : language === 'hi' ? 'खाते में साइन इन करें' : 'Sign in to AgriPlus AI'}
               </h3>
               <p className="text-xs text-[#667067] dark:text-[#B9C3BA]">
-                {language === 'mr' ? 'तुमच्या सुरक्षित Google खात्याद्वारे प्रवेश करा' : language === 'hi' ? 'अपने सुरक्षित Google खाते से साइन इन करें' : 'Use your secure Google Account to continue'}
+                {language === 'mr' ? 'तुमच्या सुरक्षित Google खात्याद्वारे प्रवेश करा' : language === 'hi' ? 'अपने सुरक्षित Google खाते से साइन इन करें' : 'Connected to Supabase Authentication'}
               </p>
             </div>
 
@@ -135,6 +189,50 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, onSuccessNavigat
                 <div className="flex-1">
                   <span className="font-bold block mb-0.5">Authentication Notice</span>
                   <span>{authError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Supabase Provider Setup Assistant (Shown if Google OAuth is not yet toggled on in Supabase Dashboard) */}
+            {providerNotConfigured && (
+              <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700/60 text-xs space-y-2.5 text-[#183A2B] dark:text-[#F5F2E9]">
+                <div className="flex items-center space-x-2 text-amber-800 dark:text-amber-300 font-bold">
+                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>How to Enable Google in Supabase:</span>
+                </div>
+
+                <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-[#475467] dark:text-[#CBD5E1]">
+                  <li>
+                    Open your{' '}
+                    <a
+                      href="https://supabase.com/dashboard/project/mhnszbxwfmpgidttpwyd/auth/providers"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline text-[#183A2B] dark:text-amber-300 inline-flex items-center gap-0.5"
+                    >
+                      Supabase Providers Dashboard <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </li>
+                  <li>Click <strong>Google</strong> and toggle <strong>Enable Google provider</strong> to ON.</li>
+                  <li>
+                    Copy your Redirect Callback URL:
+                    <div className="mt-1 flex items-center bg-white dark:bg-[#101814] p-1.5 rounded-lg border border-[#DDD9CF] dark:border-[#28513A] font-mono text-[10px] break-all">
+                      <span className="flex-1 truncate">{callbackUrl}</span>
+                      <button
+                        onClick={copyCallbackUrl}
+                        type="button"
+                        className="ml-2 px-2 py-0.5 rounded bg-[#183A2B] text-white hover:bg-[#28513A] flex items-center gap-1 font-sans text-[10px]"
+                      >
+                        {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                        <span>{copied ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </li>
+                  <li>Paste your Google Client ID & Secret from Google Cloud Console and click <strong>Save</strong>.</li>
+                </ol>
+
+                <div className="pt-1 text-[11px] text-[#667067] dark:text-[#94A3B8]">
+                  💡 <em>You can also test the entire platform immediately using the Instant Farmer Access button below!</em>
                 </div>
               </div>
             )}
@@ -151,12 +249,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, onSuccessNavigat
                   <div className="flex items-center space-x-2">
                     <div className="w-5 h-5 border-2 border-[#183A2B] border-t-transparent rounded-full animate-spin" />
                     <span className="font-bold text-xs text-[#183A2B] dark:text-[#D99A2B]">
-                      Signing you in...
+                      Connecting to Google...
                     </span>
                   </div>
                 ) : (
                   <>
-                    {/* Official Google G Logo SVG */}
                     <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
@@ -182,17 +279,76 @@ export const LoginPage: React.FC<LoginPageProps> = ({ language, onSuccessNavigat
                 )}
               </button>
 
-              <div className="text-[11px] text-center text-[#667067] dark:text-[#B9C3BA] space-y-1">
-                <p>No password needed. Instant & automatic registration.</p>
-                <div className="flex items-center justify-center space-x-1 text-[10px] text-[#183A2B] dark:text-[#D99A2B] font-semibold pt-1">
+              {/* Instant 1-Click Access for Immediate Testing */}
+              <button
+                type="button"
+                onClick={handleDemoSignIn}
+                disabled={isLoading || isSigningIn}
+                className="w-full py-2.5 px-4 rounded-2xl bg-[#F8F5ED] dark:bg-[#18251E] text-[#183A2B] dark:text-[#D99A2B] border border-[#DDD9CF] dark:border-[#28513A] hover:bg-[#F0EBE0] dark:hover:bg-[#28513A]/50 font-bold text-xs flex items-center justify-center space-x-2 transition-all cursor-pointer"
+              >
+                <Zap className="w-4 h-4 text-[#D99A2B]" />
+                <span>Instant Farmer Access (1-Click Test)</span>
+              </button>
+
+              <div className="flex items-center my-2">
+                <div className="flex-1 border-t border-[#DDD9CF] dark:border-[#28513A]"></div>
+                <span className="px-3 text-[10px] uppercase font-bold text-[#667067] dark:text-[#B9C3BA]">or email</span>
+                <div className="flex-1 border-t border-[#DDD9CF] dark:border-[#28513A]"></div>
+              </div>
+
+              {/* Email Authentication Toggle */}
+              {!showEmailForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowEmailForm(true)}
+                  className="w-full py-2 px-4 rounded-xl text-xs font-semibold text-[#183A2B] dark:text-[#D99A2B] hover:underline flex items-center justify-center space-x-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Sign in with Email & Password</span>
+                </button>
+              ) : (
+                <form onSubmit={handleEmailAuth} className="space-y-2.5 pt-1">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#101814] border border-[#DDD9CF] dark:border-[#28513A] text-[#183A2B] dark:text-[#F5F2E9] focus:outline-none focus:ring-1 focus:ring-[#D99A2B]"
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password (optional for magic link)"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#101814] border border-[#DDD9CF] dark:border-[#28513A] text-[#183A2B] dark:text-[#F5F2E9] focus:outline-none focus:ring-1 focus:ring-[#D99A2B]"
+                  />
+                  {emailStatusMessage && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      {emailStatusMessage}
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isLoading || isSigningIn}
+                    className="w-full py-2 px-3 rounded-xl bg-[#183A2B] hover:bg-[#28513A] text-white font-bold text-xs flex items-center justify-center space-x-1 cursor-pointer transition-colors"
+                  >
+                    <span>Continue with Email</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              )}
+
+              <div className="text-[11px] text-center text-[#667067] dark:text-[#B9C3BA] space-y-1 pt-1">
+                <div className="flex items-center justify-center space-x-1 text-[10px] text-[#183A2B] dark:text-[#D99A2B] font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#D99A2B]" />
-                  <span>100% Secure Official OAuth Authorization</span>
+                  <span>Powered by Supabase Secure Authentication</span>
                 </div>
               </div>
             </div>
 
             {/* Bottom Footer Info */}
-            <div className="pt-4 border-t border-[#DDD9CF] dark:border-[#28513A]/60 text-[11px] text-[#667067] dark:text-[#B9C3BA] text-center">
+            <div className="pt-3 border-t border-[#DDD9CF] dark:border-[#28513A]/60 text-[11px] text-[#667067] dark:text-[#B9C3BA] text-center">
               By signing in, you agree to AgriPlus AI's farmer data privacy and AgmarkNet terms of service.
             </div>
 

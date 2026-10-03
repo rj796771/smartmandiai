@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 
+import { createClient } from '@supabase/supabase-js';
+
 export interface UserSession {
   id: string;
   name: string;
@@ -8,13 +10,18 @@ export interface UserSession {
   picture: string;
   givenName?: string;
   familyName?: string;
-  provider: 'google';
+  provider: 'google' | 'supabase' | 'demo' | string;
   loginAt: string;
   sessionId: string;
 }
 
 // In-memory session storage (keyed by session ID token)
 const activeSessions = new Map<string, UserSession>();
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://mhnszbxwfmpgidttpwyd.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1obnN6Ynh3Zm1wZ2lkdHRwd3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDg3MzYsImV4cCI6MjEwNjUyNDczNn0.AqUpHcOTo-V3p0JoBmJLHbckJMQC7tWLy-rCHbY1i1k';
+
+const supabaseServer = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export function createSessionToken(user: Omit<UserSession, 'sessionId'>): { token: string; session: UserSession } {
   const token = 'agriplus_session_' + crypto.randomBytes(24).toString('hex');
@@ -43,6 +50,45 @@ export function getSessionFromRequest(req: Request): UserSession | null {
   if (token && activeSessions.has(token)) {
     return activeSessions.get(token) || null;
   }
+  return null;
+}
+
+export async function getSessionFromRequestAsync(req: Request): Promise<UserSession | null> {
+  const syncSession = getSessionFromRequest(req);
+  if (syncSession) return syncSession;
+
+  const authHeader = req.headers.authorization;
+  let token: string | null = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (req.headers.cookie) {
+    const match = req.headers.cookie.match(/agriplus_session=([^;]+)/);
+    if (match) token = match[1];
+  }
+
+  if (token && token.includes('.')) {
+    try {
+      const { data: { user }, error } = await supabaseServer.auth.getUser(token);
+      if (user && !error) {
+        const meta = user.user_metadata || {};
+        const fullName = meta.full_name || meta.name || user.email?.split('@')[0] || 'AgriPlus Farmer';
+        return {
+          id: user.id,
+          name: fullName,
+          email: user.email || '',
+          picture: meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fullName)}`,
+          givenName: meta.given_name || fullName.split(' ')[0],
+          familyName: meta.family_name || '',
+          provider: (user.app_metadata?.provider as any) || 'google',
+          loginAt: new Date().toISOString(),
+          sessionId: token
+        };
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return null;
 }
 
