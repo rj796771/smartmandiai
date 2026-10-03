@@ -115,7 +115,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProviderNotConfigured(false);
 
     try {
-      // 1. Trigger Supabase OAuth
+      // 1. Pre-check if Google provider is enabled in Supabase project to avoid raw 400 JSON browser redirect
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1obnN6Ynh3Zm1wZ2lkdHRwd3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NDg3MzYsImV4cCI6MjEwNjUyNDczNn0.AqUpHcOTo-V3p0JoBmJLHbckJMQC7tWLy-rCHbY1i1k';
+      try {
+        const settingsRes = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/settings`, {
+          headers: { apikey: anonKey }
+        });
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json();
+          if (settings?.external?.google === false) {
+            setProviderNotConfigured(true);
+            setAuthError(
+              'Google Sign-In is not enabled yet in your Supabase project. Follow the instructions below to enable it in your Supabase Dashboard.'
+            );
+            setIsLoading(false);
+            return;
+          }
+        }
+      } catch (checkErr) {
+        // Continue if network check fails
+      }
+
+      // 2. Trigger Supabase OAuth
       const redirectTo = window.location.origin;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -129,21 +150,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        // If Google provider is not yet toggled on in Supabase dashboard
-        const isNotEnabled = 
-          error.message?.toLowerCase().includes('not enabled') || 
-          error.message?.toLowerCase().includes('validation_failed') ||
-          (error as any).code === 'validation_failed' ||
-          (error as any).status === 400;
-
-        if (isNotEnabled) {
-          setProviderNotConfigured(true);
-          setAuthError(
-            'Google Sign-In is not enabled yet in your Supabase project. Please enable Google in Supabase Dashboard (Authentication > Providers > Google).'
-          );
-        } else {
-          setAuthError(error.message || 'Google sign-in could not be completed.');
-        }
+        setProviderNotConfigured(true);
+        setAuthError(error.message || 'Google sign-in could not be completed.');
         setIsLoading(false);
         return;
       }
