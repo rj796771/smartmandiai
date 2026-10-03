@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #F8F5ED;
+    color: #202522;
+  }
+  .dark body {
+    background-color: #101814;
+    color: #F5F2E9;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', 'Poppins', sans-serif;
+  }
+}
+
+.font-display {
+  font-family: 'Manrope', 'Poppins', sans-serif;
+}
+
+.card-shadow {
+  box-shadow: 0 2px 8px -2px rgba(24, 58, 43, 0.05), 0 8px 24px -4px rgba(24, 58, 43, 0.08);
+}
+
+.dark .card-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.glass {
+  background: rgba(255, 253, 248, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #DDD9CF;
+}
+
+.dark .glass {
+  background: rgba(24, 37, 30, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(221, 217, 207, 0.15);
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-card {
+    border: 1px solid #DDD9CF !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(40, 81, 58, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(40, 81, 58, 0.6);
+}

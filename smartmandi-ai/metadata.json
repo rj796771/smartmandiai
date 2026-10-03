@@ -1,0 +1,6 @@
+{
+  "name": "AgriPlus AI",
+  "description": "Smarter Markets. Better Decisions. Higher Returns. AgriPlus AI helps farmers sell crops smarter by recommending optimal markets, timing, verified buyers, and net profit calculations.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
